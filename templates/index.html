@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendation System - Sentiment Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            min-height: 400px;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .movie-card {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .movie-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .movie-card .info {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .movie-card .similarity {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .sentiment-result {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .sentiment-positive {
+            border-left: 5px solid #28a745;
+        }
+
+        .sentiment-negative {
+            border-left: 5px solid #dc3545;
+        }
+
+        .sentiment-label {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .sentiment-positive .sentiment-label {
+            color: #28a745;
+        }
+
+        .sentiment-negative .sentiment-label {
+            color: #dc3545;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .search-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .search-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .search-item:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+
+        .movie-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .movie-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .movie-info .detail {
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .movie-info .detail strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Movie Recommendation System</h1>
+            <p>Content-Based Recommendations with Sentiment Analysis</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('recommend')">Recommendations</button>
+            <button class="tab-button" onclick="switchTab('sentiment')">Sentiment Analysis</button>
+            <button class="tab-button" onclick="switchTab('search')">Search Movies</button>
+            <button class="tab-button" onclick="switchTab('details')">Movie Details</button>
+        </div>
+
+        <!-- Recommendations Tab -->
+        <div id="recommend" class="tab-content active">
+            <h2>Get Movie Recommendations</h2>
+            <div class="form-group">
+                <label for="movie-title">Enter a movie title:</label>
+                <input type="text" id="movie-title" placeholder="e.g., avatar" onkeyup="handleMovieTitleInput(event)">
+                <div id="movie-suggestions" style="margin-top: 10px;"></div>
+            </div>
+            <button class="button" onclick="getRecommendations()">Get Recommendations</button>
+            <div id="recommend-results" class="results"></div>
+        </div>
+
+        <!-- Sentiment Analysis Tab -->
+        <div id="sentiment" class="tab-content">
+            <h2>Analyze Review Sentiment</h2>
+            <div class="form-group">
+                <label for="review-text">Enter a movie review:</label>
+                <textarea id="review-text" placeholder="Enter your movie review here..."></textarea>
+            </div>
+            <button class="button" onclick="analyzeSentiment()">Analyze Sentiment</button>
+            <div id="sentiment-results" class="results"></div>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="search" class="tab-content">
+            <h2>Search Movies</h2>
+            <div class="form-group">
+                <label for="search-query">Search for movies:</label>
+                <input type="text" id="search-query" placeholder="Enter movie name..." onkeyup="handleSearchInput(event)">
+            </div>
+            <button class="button" onclick="searchMovies()">Search</button>
+            <div id="search-results" class="results"></div>
+        </div>
+
+        <!-- Movie Details Tab -->
+        <div id="details" class="tab-content">
+            <h2>View Movie Details</h2>
+            <div class="form-group">
+                <label for="details-title">Enter movie title:</label>
+                <input type="text" id="details-title" placeholder="e.g., avatar" onkeyup="handleDetailsInput(event)">
+                <div id="details-suggestions" style="margin-top: 10px;"></div>
+            </div>
+            <button class="button" onclick="getMovieDetails()">Get Details</button>
+            <div id="details-results" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        let searchTimeout;
+        function handleSearchInput(event) {
+            clearTimeout(searchTimeout);
+            const query = event.target.value.trim();
+            if (query.length < 2) {
+                document.getElementById('search-results').innerHTML = '';
+                return;
+            }
+            searchTimeout = setTimeout(() => searchMovies(query), 300);
+        }
+
+        let movieTitleTimeout;
+        function handleMovieTitleInput(event) {
+            clearTimeout(movieTitleTimeout);
+            const query = event.target.value.trim();
+            if (query.length < 2) {
+                document.getElementById('movie-suggestions').innerHTML = '';
+                return;
+            }
+            movieTitleTimeout = setTimeout(() => {
+                fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&limit=5`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const suggestionsDiv = document.getElementById('movie-suggestions');
+                        if (data.movies && data.movies.length > 0) {
+                            suggestionsDiv.innerHTML = '<div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px;">' +
+                                data.movies.map(m => `<div style="padding: 5px; cursor: pointer; border-radius: 3px;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('movie-title').value='${m}'; this.parentElement.innerHTML='';">${m}</div>`).join('') +
+                                '</div>';
+                        } else {
+                            suggestionsDiv.innerHTML = '';
+                        }
+                    })
+                    .catch(err => console.error('Error:', err));
+            }, 300);
+        }
+
+        let detailsTimeout;
+        function handleDetailsInput(event) {
+            clearTimeout(detailsTimeout);
+            const query = event.target.value.trim();
+            if (query.length < 2) {
+                document.getElementById('details-suggestions').innerHTML = '';
+                return;
+            }
+            detailsTimeout = setTimeout(() => {
+                fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&limit=5`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const suggestionsDiv = document.getElementById('details-suggestions');
+                        if (data.movies && data.movies.length > 0) {
+                            suggestionsDiv.innerHTML = '<div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px;">' +
+                                data.movies.map(m => `<div style="padding: 5px; cursor: pointer; border-radius: 3px;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('details-title').value='${m}'; this.parentElement.innerHTML='';">${m}</div>`).join('') +
+                                '</div>';
+                        } else {
+                            suggestionsDiv.innerHTML = '';
+                        }
+                    })
+                    .catch(err => console.error('Error:', err));
+            }, 300);
+        }
+
+        function getRecommendations() {
+            const movieTitle = document.getElementById('movie-title').value.trim();
+            const resultsDiv = document.getElementById('recommend-results');
+
+            if (!movieTitle) {
+                resultsDiv.innerHTML = '<div class="error">Please enter a movie title.</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading recommendations...</p></div>';
+
+            fetch(`${API_BASE}/api/recommend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ movie_title: movieTitle, num_recommendations: 10 })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                if (data.recommendations && data.recommendations.length > 0) {
+                    let html = `<div class="success">Found ${data.count} recommendations:</div>`;
+                    data.recommendations.forEach(movie => {
+                        const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
+                        html += `
+                            <div class="movie-card">
+                                <h3>${movie.title}</h3>
+                                <div class="info"><strong>Director:</strong> ${movie.director || 'N/A'}</div>
+                                <div class="info"><strong>Genres:</strong> ${movie.genres || 'N/A'}</div>
+                                ${actors ? `<div class="info"><strong>Actors:</strong> ${actors}</div>` : ''}
+                                <div class="similarity">Similarity: ${(movie.similarity * 100).toFixed(2)}%</div>
+                            </div>
+                        `;
+                    });
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<div class="error">No recommendations found.</div>';
+                }
+            })
+            .catch(err => {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            });
+        }
+
+        function analyzeSentiment() {
+            const review = document.getElementById('review-text').value.trim();
+            const resultsDiv = document.getElementById('sentiment-results');
+
+            if (!review) {
+                resultsDiv.innerHTML = '<div class="error">Please enter a review.</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Analyzing sentiment...</p></div>';
+
+            fetch(`${API_BASE}/api/sentiment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ review: review })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                const isPositive = data.sentiment.toLowerCase().includes('positive');
+                const sentimentClass = isPositive ? 'sentiment-positive' : 'sentiment-negative';
+                
+                resultsDiv.innerHTML = `
+                    <div class="sentiment-result ${sentimentClass}">
+                        <div class="sentiment-label">${data.sentiment}</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${data.confidence_percent}%">
+                                ${data.confidence_percent}% Confidence
+                            </div>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(err => {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            });
+        }
+
+        function searchMovies(query = null) {
+            const searchQuery = query || document.getElementById('search-query').value.trim();
+            const resultsDiv = document.getElementById('search-results');
+
+            if (!searchQuery) {
+                resultsDiv.innerHTML = '<div class="error">Please enter a search query.</div>';
+                return;
+            }
+
+            if (!query) {
+                resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Searching...</p></div>';
+            }
+
+            fetch(`${API_BASE}/api/search?q=${encodeURIComponent(searchQuery)}&limit=20`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                if (data.movies && data.movies.length > 0) {
+                    let html = `<div class="success">Found ${data.movies.length} movies:</div><div class="search-results">`;
+                    data.movies.forEach(movie => {
+                        html += `
+                            <div class="search-item" onclick="document.getElementById('details-title').value='${movie}'; switchTab('details'); getMovieDetails();">
+                                ${movie}
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<div class="error">No movies found.</div>';
+                }
+            })
+            .catch(err => {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            });
+        }
+
+        function getMovieDetails() {
+            const movieTitle = document.getElementById('details-title').value.trim();
+            const resultsDiv = document.getElementById('details-results');
+
+            if (!movieTitle) {
+                resultsDiv.innerHTML = '<div class="error">Please enter a movie title.</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading movie details...</p></div>';
+
+            fetch(`${API_BASE}/api/movie-info?title=${encodeURIComponent(movieTitle)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                const actors = data.actors.filter(a => a && a !== 'nan').join(', ');
+                resultsDiv.innerHTML = `
+                    <div class="movie-info">
+                        <h3>${data.title}</h3>
+                        <div class="detail"><strong>Director:</strong> ${data.director || 'N/A'}</div>
+                        <div class="detail"><strong>Genres:</strong> ${data.genres || 'N/A'}</div>
+                        ${actors ? `<div class="detail"><strong>Actors:</strong> ${actors}</div>` : ''}
+                    </div>
+                `;
+            })
+            .catch(err => {
+                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            });
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('movie-title').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') getRecommendations();
+        });
+        document.getElementById('search-query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchMovies();
+        });
+        document.getElementById('details-title').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') getMovieDetails();
+        });
+    </script>
+</body>
+</html>

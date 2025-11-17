@@ -1,0 +1,18 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.env
+
+# macOS
+.DS_Store
+
+# Data/model artifacts
+data/raw/
+# IDE
+.vscode/
+.idea/
+
