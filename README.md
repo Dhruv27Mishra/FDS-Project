@@ -87,12 +87,6 @@ If you would like to regenerate the processed dataset or retrain the classifier,
 
 ---
 
-## Roadmap
-- [ ] Add notebooks describing data cleaning steps for `main_data.csv`.
-- [ ] Containerize the web app for easy deployment (Docker + Gunicorn).
-- [ ] Replace pickled sentiment artifacts with on-demand training code.
-- [ ] Add pytest coverage around recommender core utilities.
-
 ---
 
 ## License
