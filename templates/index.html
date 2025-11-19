@@ -170,6 +170,12 @@
             box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
         }
 
+        .movie-card:focus {
+            outline: 3px solid #667eea;
+            outline-offset: 2px;
+            border-color: #667eea;
+        }
+
         .movie-card.expanded {
             border-color: #667eea;
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
@@ -565,7 +571,16 @@
         }
 
         function toggleCard(cardElement) {
-            cardElement.classList.toggle('expanded');
+            const isExpanded = cardElement.classList.toggle('expanded');
+            cardElement.setAttribute('aria-expanded', isExpanded.toString());
+        }
+
+        function handleCardKeydown(event, cardElement) {
+            // Handle Enter and Space keys for keyboard accessibility
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleCard(cardElement);
+            }
         }
 
         function showMovieDetails(movieTitle) {
@@ -616,7 +631,13 @@
                     data.recommendations.forEach((movie, index) => {
                         const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
                         html += `
-                            <div class="movie-card" onclick="toggleCard(this)">
+                            <div class="movie-card" 
+                                 onclick="toggleCard(this)" 
+                                 onkeydown="handleCardKeydown(event, this)"
+                                 tabindex="0" 
+                                 role="button" 
+                                 aria-expanded="false"
+                                 aria-label="Expand details for ${movie.title.replace(/"/g, '&quot;')}">
                                 <div class="movie-card-header">
                                     <div class="movie-card-title">
                                         <span class="movie-card-index">${index + 1}.</span>
