@@ -9,9 +9,11 @@ This project is a Foundations of Data Science (FDS) capstone that blends a conte
 ## Features
 - Content-based movie recommendations powered by a `CountVectorizer` + cosine similarity pipeline.
 - Sentiment classifier (Multinomial Naive Bayes) for free-form movie reviews.
+- **Intelligent autocomplete** with fuzzy matching across all interfaces (GUI, Web, CLI).
 - Autocomplete/search endpoints to support the web UI.
 - Clean separation between raw data, processed artifacts, trained models, and application code.
 - Ready-to-run CLI (`python cli.py`) and web server (`python app.py`).
+- Modern desktop GUI with real-time suggestions (`python gui.py`).
 
 ---
 
@@ -59,16 +61,37 @@ source venv/bin/activate
 python cli.py
 ```
 Use the interactive menu to:
-- Search movies
-- Request top-N recommendations
+- Search movies with **Tab completion** (press Tab to autocomplete movie names)
+- Request top-N recommendations with intelligent suggestions
 - Run sentiment analysis on a review
+- **Tip**: Start typing a movie name and press Tab to see all matches!
 
 ### 2. Flask Web UI
 ```bash
 source venv/bin/activate
 python app.py
 ```
-Open `http://localhost:5002` (or the port shown in the console). The web client exposes search, recommendations, sentiment analysis, and movie detail panels backed by the same recommender core.
+Open `http://localhost:5002` (or the port shown in the console). The web client exposes:
+- **Live autocomplete** in all search fields (start typing to see suggestions)
+- Movie recommendations with visual similarity scores
+- Sentiment analysis with confidence metrics
+- Movie detail panels backed by the same recommender core
+
+### 3. Modern Desktop GUI
+```bash
+source venv/bin/activate
+python gui.py
+```
+Launch a beautiful, modern desktop application with:
+- **Real-time autocomplete** - Fuzzy-matched movie suggestions as you type
+- **Interactive expandable cards** - Click to expand/collapse recommendation details
+- **Dark theme with transparency** - Sleek, contemporary design
+- **Three-tab interface**:
+  - 🔍 Search & Recommend - Get personalized movie recommendations with expandable cards
+  - 💭 Sentiment Analysis - Analyze movie reviews with AI
+  - ℹ️ Movie Info - View detailed movie information
+- **Visual feedback** - Color-coded sentiment results with confidence meters
+- **Action buttons** - Quick access to full details and similar movies from each card
 
 ---
 
@@ -78,6 +101,17 @@ Open `http://localhost:5002` (or the port shown in the console). The web client 
 - `models/`: Serialized scikit-learn model and vectorizer required for sentiment analysis (tracked).
 
 If you would like to regenerate the processed dataset or retrain the classifier, drop new files into `data/raw/` and follow the notebook or scripts that produced `main_data.csv` (not included yet—feel free to add your own experimentation notebooks under `notebooks/`).
+
+---
+
+## Autocomplete & Search Features
+
+All three interfaces support intelligent autocomplete with fuzzy matching! See **[AUTOCOMPLETE_FEATURES.md](AUTOCOMPLETE_FEATURES.md)** for detailed documentation on:
+- How autocomplete works in each interface
+- Keyboard shortcuts and tips
+- Fuzzy matching algorithm
+- Performance characteristics
+- Usage examples
 
 ---
 
