@@ -489,6 +489,14 @@
     <script>
         const API_BASE = '';
 
+        // HTML escape function to prevent XSS attacks
+        function escapeHtml(text) {
+            if (text == null || text === '') return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -529,7 +537,7 @@
                         const suggestionsDiv = document.getElementById('movie-suggestions');
                         if (data.movies && data.movies.length > 0) {
                             suggestionsDiv.innerHTML = '<div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px;">' +
-                                data.movies.map(m => `<div style="padding: 5px; cursor: pointer; border-radius: 3px;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('movie-title').value='${m}'; this.parentElement.innerHTML='';">${m}</div>`).join('') +
+                                data.movies.map(m => `<div style="padding: 5px; cursor: pointer; border-radius: 3px;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('movie-title').value='${escapeHtml(m).replace(/'/g, "\\'")}'; this.parentElement.innerHTML='';">${escapeHtml(m)}</div>`).join('') +
                                 '</div>';
                         } else {
                             suggestionsDiv.innerHTML = '';
@@ -554,7 +562,7 @@
                         const suggestionsDiv = document.getElementById('details-suggestions');
                         if (data.movies && data.movies.length > 0) {
                             suggestionsDiv.innerHTML = '<div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px;">' +
-                                data.movies.map(m => `<div style="padding: 5px; cursor: pointer; border-radius: 3px;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('details-title').value='${m}'; this.parentElement.innerHTML='';">${m}</div>`).join('') +
+                                data.movies.map(m => `<div style="padding: 5px; cursor: pointer; border-radius: 3px;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('details-title').value='${escapeHtml(m).replace(/'/g, "\\'")}'; this.parentElement.innerHTML='';">${escapeHtml(m)}</div>`).join('') +
                                 '</div>';
                         } else {
                             suggestionsDiv.innerHTML = '';
@@ -605,12 +613,12 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    resultsDiv.innerHTML = `<div class="error">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
                 if (data.recommendations && data.recommendations.length > 0) {
-                    let html = `<div class="success">✨ ${data.count} Recommendations based on: ${movieTitle}</div>`;
+                    let html = `<div class="success">✨ ${data.count} Recommendations based on: ${escapeHtml(movieTitle)}</div>`;
                     html += '<p style="color: #666; margin: 10px 0; font-size: 0.9em;">💡 Click on any card to expand and see more details</p>';
                     
                     data.recommendations.forEach((movie, index) => {
@@ -620,20 +628,20 @@
                                 <div class="movie-card-header">
                                     <div class="movie-card-title">
                                         <span class="movie-card-index">${index + 1}.</span>
-                                        <h3>${movie.title}</h3>
+                                        <h3>${escapeHtml(movie.title)}</h3>
                                     </div>
                                     <span class="expand-icon">▼</span>
                                 </div>
                                 <div class="movie-card-score">Match Score: ${(movie.similarity * 100).toFixed(2)}%</div>
                                 <div class="movie-card-details">
                                     <div class="movie-card-details-content">
-                                        ${movie.genres ? `<div class="info"><strong>🎭 Genres:</strong> ${movie.genres}</div>` : ''}
-                                        ${movie.director ? `<div class="info"><strong>🎬 Director:</strong> ${movie.director}</div>` : ''}
-                                        ${actors ? `<div class="info"><strong>⭐ Cast:</strong> ${actors}</div>` : ''}
-                                        ${movie.vote_average ? `<div class="info"><strong>⭐ Rating:</strong> ${movie.vote_average}/10</div>` : ''}
+                                        ${movie.genres ? `<div class="info"><strong>🎭 Genres:</strong> ${escapeHtml(movie.genres)}</div>` : ''}
+                                        ${movie.director ? `<div class="info"><strong>🎬 Director:</strong> ${escapeHtml(movie.director)}</div>` : ''}
+                                        ${actors ? `<div class="info"><strong>⭐ Cast:</strong> ${escapeHtml(actors)}</div>` : ''}
+                                        ${movie.vote_average ? `<div class="info"><strong>⭐ Rating:</strong> ${escapeHtml(movie.vote_average.toString())}/10</div>` : ''}
                                         <div class="movie-card-actions">
-                                            <button class="card-action-btn primary" onclick="event.stopPropagation(); showMovieDetails('${movie.title.replace(/'/g, "\\'")}');">Full Details</button>
-                                            <button class="card-action-btn secondary" onclick="event.stopPropagation(); findSimilarMovies('${movie.title.replace(/'/g, "\\'")}');">Similar Movies</button>
+                                            <button class="card-action-btn primary" onclick="event.stopPropagation(); showMovieDetails('${escapeHtml(movie.title).replace(/'/g, "\\'")}');">Full Details</button>
+                                            <button class="card-action-btn secondary" onclick="event.stopPropagation(); findSimilarMovies('${escapeHtml(movie.title).replace(/'/g, "\\'")}');">Similar Movies</button>
                                         </div>
                                     </div>
                                 </div>
@@ -646,7 +654,7 @@
                 }
             })
             .catch(err => {
-                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+                resultsDiv.innerHTML = `<div class="error">Error: ${escapeHtml(err.message)}</div>`;
             });
         }
 
@@ -671,7 +679,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    resultsDiv.innerHTML = `<div class="error">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
@@ -680,7 +688,7 @@
                 
                 resultsDiv.innerHTML = `
                     <div class="sentiment-result ${sentimentClass}">
-                        <div class="sentiment-label">${data.sentiment}</div>
+                        <div class="sentiment-label">${escapeHtml(data.sentiment)}</div>
                         <div class="confidence-bar">
                             <div class="confidence-fill" style="width: ${data.confidence_percent}%">
                                 ${data.confidence_percent}% Confidence
@@ -690,7 +698,7 @@
                 `;
             })
             .catch(err => {
-                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+                resultsDiv.innerHTML = `<div class="error">Error: ${escapeHtml(err.message)}</div>`;
             });
         }
 
@@ -711,7 +719,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    resultsDiv.innerHTML = `<div class="error">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
@@ -719,8 +727,8 @@
                     let html = `<div class="success">Found ${data.movies.length} movies:</div><div class="search-results">`;
                     data.movies.forEach(movie => {
                         html += `
-                            <div class="search-item" onclick="document.getElementById('details-title').value='${movie}'; switchTab('details'); getMovieDetails();">
-                                ${movie}
+                            <div class="search-item" onclick="document.getElementById('details-title').value='${escapeHtml(movie).replace(/'/g, "\\'")}'; switchTab('details'); getMovieDetails();">
+                                ${escapeHtml(movie)}
                             </div>
                         `;
                     });
@@ -731,7 +739,7 @@
                 }
             })
             .catch(err => {
-                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+                resultsDiv.innerHTML = `<div class="error">Error: ${escapeHtml(err.message)}</div>`;
             });
         }
 
@@ -750,22 +758,22 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                    resultsDiv.innerHTML = `<div class="error">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
                 const actors = data.actors.filter(a => a && a !== 'nan').join(', ');
                 resultsDiv.innerHTML = `
                     <div class="movie-info">
-                        <h3>${data.title}</h3>
-                        <div class="detail"><strong>Director:</strong> ${data.director || 'N/A'}</div>
-                        <div class="detail"><strong>Genres:</strong> ${data.genres || 'N/A'}</div>
-                        ${actors ? `<div class="detail"><strong>Actors:</strong> ${actors}</div>` : ''}
+                        <h3>${escapeHtml(data.title)}</h3>
+                        <div class="detail"><strong>Director:</strong> ${escapeHtml(data.director || 'N/A')}</div>
+                        <div class="detail"><strong>Genres:</strong> ${escapeHtml(data.genres || 'N/A')}</div>
+                        ${actors ? `<div class="detail"><strong>Actors:</strong> ${escapeHtml(actors)}</div>` : ''}
                     </div>
                 `;
             })
             .catch(err => {
-                resultsDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+                resultsDiv.innerHTML = `<div class="error">Error: ${escapeHtml(err.message)}</div>`;
             });
         }
 
