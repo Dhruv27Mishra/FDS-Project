@@ -579,7 +579,22 @@
         }
 
         function toggleCard(cardElement) {
-            cardElement.classList.toggle('expanded');
+            const isExpanded = cardElement.classList.toggle('expanded');
+            cardElement.setAttribute('aria-expanded', isExpanded.toString());
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function handleCardKeydown(event, cardElement) {
+            // Handle Enter and Space keys for keyboard accessibility
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+                event.preventDefault();
+                toggleCard(cardElement);
+            }
         }
 
         function handleCardKeyPress(event, cardElement) {
@@ -633,12 +648,21 @@
 
                 if (data.recommendations && data.recommendations.length > 0) {
                     let html = `<div class="success">✨ ${data.count} Recommendations based on: ${escapeHtml(movieTitle)}</div>`;
-                    html += '<p style="color: #666; margin: 10px 0; font-size: 0.9em;">💡 Click on any card to expand and see more details</p>';
+                    html += '<p style="color: #666; margin: 10px 0; font-size: 0.9em;">💡 Click on any card or press Enter/Space to expand and see more details</p>';
                     
                     data.recommendations.forEach((movie, index) => {
                         const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
+                        // Only escape quotes for aria-label attribute (as per code review feedback)
+                        const escapedTitleForAria = movie.title.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        
                         html += `
-                            <div class="movie-card" tabindex="0" onclick="toggleCard(this)" onkeypress="handleCardKeyPress(event, this)">
+                            <div class="movie-card" 
+                                 onclick="toggleCard(this)" 
+                                 onkeydown="handleCardKeydown(event, this)"
+                                 tabindex="0" 
+                                 role="button" 
+                                 aria-expanded="false"
+                                 aria-label="Expand details for ${escapedTitleForAria}">
                                 <div class="movie-card-header">
                                     <div class="movie-card-title">
                                         <span class="movie-card-index">${index + 1}.</span>
