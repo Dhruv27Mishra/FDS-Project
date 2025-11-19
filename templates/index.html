@@ -170,6 +170,12 @@
             box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
         }
 
+        .movie-card:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+
         .movie-card.expanded {
             border-color: #667eea;
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
@@ -576,6 +582,14 @@
             cardElement.classList.toggle('expanded');
         }
 
+        function handleCardKeyPress(event, cardElement) {
+            // Handle Enter (13) or Space (32) key
+            if (event.keyCode === 13 || event.keyCode === 32) {
+                event.preventDefault();
+                toggleCard(cardElement);
+            }
+        }
+
         function showMovieDetails(movieTitle) {
             // Switch to details tab and populate with movie title
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -624,7 +638,7 @@
                     data.recommendations.forEach((movie, index) => {
                         const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
                         html += `
-                            <div class="movie-card" onclick="toggleCard(this)">
+                            <div class="movie-card" tabindex="0" onclick="toggleCard(this)" onkeypress="handleCardKeyPress(event, this)">
                                 <div class="movie-card-header">
                                     <div class="movie-card-title">
                                         <span class="movie-card-index">${index + 1}.</span>
