@@ -626,7 +626,7 @@
 
                 if (data.recommendations && data.recommendations.length > 0) {
                     let html = `<div class="success">✨ ${data.count} Recommendations based on: ${movieTitle}</div>`;
-                    html += '<p style="color: #666; margin: 10px 0; font-size: 0.9em;">💡 Click on any card to expand and see more details</p>';
+                    html += '<p style="color: #666; margin: 10px 0; font-size: 0.9em;">💡 Click on any card or press Enter/Space to expand and see more details</p>';
                     
                     data.recommendations.forEach((movie, index) => {
                         const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
