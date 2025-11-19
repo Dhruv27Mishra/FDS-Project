@@ -5,6 +5,7 @@ Flask Web Application for Movie Recommendation System with Sentiment Analysis
 
 from flask import Flask, render_template, request, jsonify
 from src.movie_recommender import MovieRecommender
+from src.evaluator import ModelEvaluator
 import sys
 
 app = Flask(__name__)
@@ -92,6 +93,17 @@ def get_movie_info():
         return jsonify({'error': f'Movie "{movie_title}" not found'}), 404
     
     return jsonify(movie_info)
+
+
+@app.route('/api/evaluate', methods=['GET'])
+def evaluate_models():
+    """API endpoint for evaluating model performance"""
+    try:
+        evaluator = ModelEvaluator(recommender)
+        metrics = evaluator.get_all_metrics()
+        return jsonify(metrics)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

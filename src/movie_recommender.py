@@ -14,6 +14,23 @@ import sys
 import readline
 from typing import List, Tuple, Optional
 from pathlib import Path
+import numpy as np
+
+# Transformer-based imports
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    print("Warning: sentence-transformers not available. Falling back to CountVectorizer.")
+
+try:
+    from transformers import pipeline
+    import torch
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    print("Warning: transformers not available. Falling back to Naive Bayes.")
 
 
 # ANSI Color codes for terminal output
@@ -50,28 +67,76 @@ VECTORIZER_PATH = MODELS_DIR / "tranform.pkl"
 class MovieRecommender:
     """Main class for the Movie Recommendation System with Sentiment Analysis"""
     
-    def __init__(self):
-        """Initialize the recommender system"""
+    def __init__(self, use_transformers=True):
+        """
+        Initialize the recommender system
+        
+        Args:
+            use_transformers: If True, use transformer models (Sentence Transformers + DistilBERT)
+                             If False, use legacy models (CountVectorizer + Naive Bayes)
+        """
         self.data = None
         self.similarity = None
+        self.embeddings = None
         self.clf = None
         self.vectorizer = None
+        self.sentiment_pipeline = None
+        self.sentence_model = None
+        self.use_transformers = use_transformers and SENTENCE_TRANSFORMERS_AVAILABLE and TRANSFORMERS_AVAILABLE
         self._load_data()
         self._load_models()
     
     def _load_data(self):
-        """Load movie data and create similarity matrix"""
+        """Load movie data and create similarity matrix or embeddings"""
         print("Loading movie data...")
         try:
             self.data = pd.read_csv(PROCESSED_DATA_PATH)
             print(f"✓ Loaded {len(self.data)} movies")
             
-            # Create similarity matrix
-            print("Computing similarity matrix...")
-            cv = CountVectorizer()
-            count_matrix = cv.fit_transform(self.data['comb'])
-            self.similarity = cosine_similarity(count_matrix)
-            print("✓ Similarity matrix computed")
+            if self.use_transformers:
+                # Use Sentence Transformers for semantic embeddings
+                print("Creating semantic embeddings with Sentence Transformers...")
+                try:
+                    # Use a fast, efficient model
+                    self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+                    print("✓ Sentence Transformer model loaded")
+                    
+                    # Create descriptive text for each movie
+                    descriptions = []
+                    for _, row in self.data.iterrows():
+                        # Combine all features into a descriptive text
+                        desc_parts = []
+                        if pd.notna(row.get('genres')):
+                            desc_parts.append(str(row['genres']))
+                        if pd.notna(row.get('director_name')):
+                            desc_parts.append(f"directed by {row['director_name']}")
+                        if pd.notna(row.get('actor_1_name')):
+                            desc_parts.append(f"starring {row['actor_1_name']}")
+                        if pd.notna(row.get('actor_2_name')):
+                            desc_parts.append(f"and {row['actor_2_name']}")
+                        if pd.notna(row.get('actor_3_name')):
+                            desc_parts.append(f"and {row['actor_3_name']}")
+                        
+                        desc = " ".join(desc_parts) if desc_parts else str(row.get('comb', ''))
+                        descriptions.append(desc)
+                    
+                    # Generate embeddings
+                    self.embeddings = self.sentence_model.encode(descriptions, show_progress_bar=True)
+                    print(f"✓ Created {len(self.embeddings)} semantic embeddings")
+                    
+                    # Pre-compute similarity matrix for faster recommendations
+                    print("Computing similarity matrix from embeddings...")
+                    self.similarity = cosine_similarity(self.embeddings)
+                    print("✓ Similarity matrix computed")
+                    
+                except Exception as e:
+                    print(f"Warning: Failed to load Sentence Transformers: {e}")
+                    print("Falling back to CountVectorizer...")
+                    self.use_transformers = False
+                    self._load_data_legacy()
+            else:
+                self._load_data_legacy()
+                
         except FileNotFoundError:
             print(f"Error: {PROCESSED_DATA_PATH} not found!")
             sys.exit(1)
@@ -79,15 +144,51 @@ class MovieRecommender:
             print(f"Error loading data: {e}")
             sys.exit(1)
     
+    def _load_data_legacy(self):
+        """Legacy method using CountVectorizer"""
+        print("Computing similarity matrix with CountVectorizer...")
+        cv = CountVectorizer()
+        count_matrix = cv.fit_transform(self.data['comb'])
+        self.similarity = cosine_similarity(count_matrix)
+        print("✓ Similarity matrix computed")
+    
     def _load_models(self):
         """Load pre-trained sentiment analysis models"""
         print("Loading sentiment analysis models...")
+        
+        if self.use_transformers:
+            # Use DistilBERT for sentiment analysis
+            try:
+                # Use GPU if available, else CPU
+                device = 0 if torch.cuda.is_available() else -1
+                
+                # Use a fast, accurate sentiment model
+                self.sentiment_pipeline = pipeline(
+                    "sentiment-analysis",
+                    model="distilbert-base-uncased-finetuned-sst-2-english",
+                    device=device
+                )
+                print("✓ DistilBERT sentiment model loaded")
+                if device >= 0:
+                    print("  (Using GPU acceleration)")
+                else:
+                    print("  (Using CPU)")
+            except Exception as e:
+                print(f"Warning: Failed to load DistilBERT: {e}")
+                print("Falling back to legacy Naive Bayes model...")
+                self.use_transformers = False
+                self._load_models_legacy()
+        else:
+            self._load_models_legacy()
+    
+    def _load_models_legacy(self):
+        """Legacy method using Naive Bayes"""
         try:
             with open(SENTIMENT_MODEL_PATH, 'rb') as model_file:
                 self.clf = pickle.load(model_file)
             with open(VECTORIZER_PATH, 'rb') as vectorizer_file:
                 self.vectorizer = pickle.load(vectorizer_file)
-            print("✓ Sentiment analysis models loaded")
+            print("✓ Sentiment analysis models loaded (Naive Bayes)")
         except FileNotFoundError:
             print("Warning: Sentiment analysis models not found. Sentiment analysis will be disabled.")
             self.clf = None
@@ -165,26 +266,55 @@ class MovieRecommender:
         Returns:
             Tuple of (sentiment label, confidence score)
         """
-        if self.clf is None or self.vectorizer is None:
-            return "Sentiment analysis unavailable", 0.0
-        
-        try:
-            # Transform review
-            review_vector = self.vectorizer.transform([review])
+        if self.use_transformers:
+            # Use DistilBERT for sentiment analysis
+            if self.sentiment_pipeline is None:
+                return "Sentiment analysis unavailable", 0.0
             
-            # Predict sentiment
-            prediction = self.clf.predict(review_vector)[0]
-            probabilities = self.clf.predict_proba(review_vector)[0]
+            try:
+                # Truncate review if too long (BERT models have token limits)
+                max_length = 512
+                if len(review) > max_length:
+                    review = review[:max_length]
+                
+                # Get sentiment prediction
+                result = self.sentiment_pipeline(review)[0]
+                
+                # Extract label and score
+                label = result['label']
+                score = result['score']
+                
+                # Map to standard format
+                if 'POSITIVE' in label.upper() or 'POS' in label.upper():
+                    sentiment = "Positive"
+                else:
+                    sentiment = "Negative"
+                
+                return sentiment, score
+            except Exception as e:
+                return f"Error: {e}", 0.0
+        else:
+            # Legacy Naive Bayes method
+            if self.clf is None or self.vectorizer is None:
+                return "Sentiment analysis unavailable", 0.0
             
-            # Get confidence
-            confidence = max(probabilities)
-            
-            # Map prediction to label
-            sentiment = "Positive" if prediction == 1 else "Negative"
-            
-            return sentiment, confidence
-        except Exception as e:
-            return f"Error: {e}", 0.0
+            try:
+                # Transform review
+                review_vector = self.vectorizer.transform([review])
+                
+                # Predict sentiment
+                prediction = self.clf.predict(review_vector)[0]
+                probabilities = self.clf.predict_proba(review_vector)[0]
+                
+                # Get confidence
+                confidence = max(probabilities)
+                
+                # Map prediction to label
+                sentiment = "Positive" if prediction == 1 else "Negative"
+                
+                return sentiment, confidence
+            except Exception as e:
+                return f"Error: {e}", 0.0
     
     def get_movie_info(self, movie_title: str) -> Optional[dict]:
         """Get detailed information about a movie"""
@@ -295,7 +425,8 @@ class TerminalInterface:
         print(f"{Colors.YELLOW}2.{Colors.END} Analyze Review Sentiment")
         print(f"{Colors.YELLOW}3.{Colors.END} Search Movies")
         print(f"{Colors.YELLOW}4.{Colors.END} View Movie Details")
-        print(f"{Colors.YELLOW}5.{Colors.END} Exit")
+        print(f"{Colors.YELLOW}5.{Colors.END} View Model Evaluation Metrics")
+        print(f"{Colors.YELLOW}6.{Colors.END} Exit")
         print(f"{Colors.CYAN}{'-' * 70}{Colors.END}")
     
     def get_movie_recommendations(self):
@@ -394,7 +525,13 @@ class TerminalInterface:
         print(f"{Colors.BOLD}{Colors.HEADER}SENTIMENT ANALYSIS{Colors.END}")
         print(f"{Colors.HEADER}{'=' * 70}{Colors.END}")
         
-        if self.recommender.clf is None:
+        # Check if sentiment analysis is available
+        if self.recommender.use_transformers:
+            available = self.recommender.sentiment_pipeline is not None
+        else:
+            available = self.recommender.clf is not None
+        
+        if not available:
             print(f"\n{Colors.ERROR}❌ Sentiment analysis is not available (models not loaded){Colors.END}")
             return
         
@@ -502,6 +639,81 @@ class TerminalInterface:
         print(f"{Colors.BOLD}Actors:{Colors.END} {actors_str}")
         print(f"{Colors.CYAN}{'-' * 70}{Colors.END}")
     
+    def show_evaluation_metrics(self):
+        """Display evaluation metrics for both systems"""
+        print(f"\n{Colors.HEADER}{'=' * 70}{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.HEADER}MODEL EVALUATION METRICS{Colors.END}")
+        print(f"{Colors.HEADER}{'=' * 70}{Colors.END}")
+        
+        try:
+            from src.evaluator import ModelEvaluator
+            evaluator = ModelEvaluator(self.recommender)
+            
+            print(f"\n{Colors.INFO}Evaluating models... This may take a moment.{Colors.END}\n")
+            
+            # Evaluate sentiment
+            print(f"{Colors.CYAN}{'-' * 70}{Colors.END}")
+            print(f"{Colors.BOLD}{Colors.BLUE}SENTIMENT ANALYSIS METRICS{Colors.END}")
+            print(f"{Colors.CYAN}{'-' * 70}{Colors.END}")
+            
+            sentiment_metrics = evaluator.evaluate_sentiment()
+            
+            if 'error' in sentiment_metrics:
+                print(f"{Colors.ERROR}❌ {sentiment_metrics['error']}{Colors.END}")
+            else:
+                print(f"{Colors.BOLD}Model Type:{Colors.END} {sentiment_metrics['model_type']}")
+                print(f"{Colors.BOLD}Total Test Samples:{Colors.END} {sentiment_metrics['total_samples']}")
+                print(f"\n{Colors.BOLD}Overall Metrics:{Colors.END}")
+                print(f"  {Colors.SUCCESS}Accuracy:{Colors.END} {sentiment_metrics['accuracy']:.2f}%")
+                print(f"  {Colors.SUCCESS}Macro Precision:{Colors.END} {sentiment_metrics['macro_precision']:.2f}%")
+                print(f"  {Colors.SUCCESS}Macro Recall:{Colors.END} {sentiment_metrics['macro_recall']:.2f}%")
+                print(f"  {Colors.SUCCESS}Macro F1 Score:{Colors.END} {sentiment_metrics['macro_f1']:.2f}%")
+                
+                print(f"\n{Colors.BOLD}Positive Class:{Colors.END}")
+                print(f"  Precision: {sentiment_metrics['precision_positive']:.2f}%")
+                print(f"  Recall: {sentiment_metrics['recall_positive']:.2f}%")
+                print(f"  F1 Score: {sentiment_metrics['f1_positive']:.2f}%")
+                
+                print(f"\n{Colors.BOLD}Negative Class:{Colors.END}")
+                print(f"  Precision: {sentiment_metrics['precision_negative']:.2f}%")
+                print(f"  Recall: {sentiment_metrics['recall_negative']:.2f}%")
+                print(f"  F1 Score: {sentiment_metrics['f1_negative']:.2f}%")
+                
+                cm = sentiment_metrics['confusion_matrix']
+                print(f"\n{Colors.BOLD}Confusion Matrix:{Colors.END}")
+                print(f"  True Positives: {cm['true_positive']}")
+                print(f"  False Positives: {cm['false_positive']}")
+                print(f"  False Negatives: {cm['false_negative']}")
+                print(f"  True Negatives: {cm['true_negative']}")
+            
+            # Evaluate recommendations
+            print(f"\n{Colors.CYAN}{'-' * 70}{Colors.END}")
+            print(f"{Colors.BOLD}{Colors.BLUE}RECOMMENDATION SYSTEM METRICS{Colors.END}")
+            print(f"{Colors.CYAN}{'-' * 70}{Colors.END}")
+            
+            rec_metrics = evaluator.evaluate_recommendations()
+            
+            if 'error' in rec_metrics:
+                print(f"{Colors.ERROR}❌ {rec_metrics['error']}{Colors.END}")
+            else:
+                print(f"{Colors.BOLD}Model Type:{Colors.END} {rec_metrics['model_type']}")
+                print(f"{Colors.BOLD}Test Movies:{Colors.END} {rec_metrics['num_test_movies']}")
+                print(f"{Colors.BOLD}Recommendations per Movie (K):{Colors.END} {rec_metrics['k']}")
+                print(f"\n{Colors.BOLD}Performance Metrics:{Colors.END}")
+                print(f"  {Colors.SUCCESS}Precision@{rec_metrics['k']}:{Colors.END} {rec_metrics['precision_at_k']:.2f}%")
+                print(f"  {Colors.SUCCESS}Recall@{rec_metrics['k']}:{Colors.END} {rec_metrics['recall_at_k']:.2f}%")
+                print(f"  {Colors.SUCCESS}F1@{rec_metrics['k']}:{Colors.END} {rec_metrics['f1_at_k']:.2f}%")
+                print(f"  {Colors.SUCCESS}Diversity:{Colors.END} {rec_metrics['diversity']:.2f}%")
+                print(f"  {Colors.SUCCESS}Coverage:{Colors.END} {rec_metrics['coverage']:.2f}%")
+                print(f"  {Colors.INFO}Total Movies in Database:{Colors.END} {rec_metrics['total_movies']}")
+            
+            print(f"\n{Colors.CYAN}{'-' * 70}{Colors.END}")
+            
+        except ImportError:
+            print(f"{Colors.ERROR}❌ Evaluation module not found{Colors.END}")
+        except Exception as e:
+            print(f"{Colors.ERROR}❌ Error during evaluation: {e}{Colors.END}")
+    
     def run(self):
         """Main application loop"""
         self.clear_screen()
@@ -509,7 +721,7 @@ class TerminalInterface:
         
         while True:
             self.print_menu()
-            choice = input(f"\n{Colors.YELLOW}Enter your choice (1-5):{Colors.END} ").strip()
+            choice = input(f"\n{Colors.YELLOW}Enter your choice (1-6):{Colors.END} ").strip()
             
             if choice == '1':
                 self.get_movie_recommendations()
@@ -520,12 +732,14 @@ class TerminalInterface:
             elif choice == '4':
                 self.view_movie_details()
             elif choice == '5':
+                self.show_evaluation_metrics()
+            elif choice == '6':
                 print(f"\n{Colors.TITLE}{'=' * 70}{Colors.END}")
                 print(f"{Colors.SUCCESS}Thank you for using the Movie Recommendation System!{Colors.END}")
                 print(f"{Colors.TITLE}{'=' * 70}{Colors.END}")
                 break
             else:
-                print(f"\n{Colors.ERROR}❌ Invalid choice! Please enter a number between 1 and 5.{Colors.END}")
+                print(f"\n{Colors.ERROR}❌ Invalid choice! Please enter a number between 1 and 6.{Colors.END}")
             
             input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.END}")
 

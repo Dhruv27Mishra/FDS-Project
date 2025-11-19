@@ -8,6 +8,7 @@ import customtkinter as ctk
 from tkinter import scrolledtext
 import sys
 from src.movie_recommender import MovieRecommender
+from src.evaluator import ModelEvaluator
 import threading
 from typing import List
 
@@ -319,11 +320,13 @@ class MovieRecommenderGUI:
         self.tabview.add("🔍 Search & Recommend")
         self.tabview.add("💭 Sentiment Analysis")
         self.tabview.add("ℹ️ Movie Info")
+        self.tabview.add("📊 Model Metrics")
         
         # Setup each tab
         self.setup_recommend_tab()
         self.setup_sentiment_tab()
         self.setup_info_tab()
+        self.setup_metrics_tab()
         
         # Footer
         footer = ctk.CTkLabel(
@@ -733,6 +736,189 @@ class MovieRecommenderGUI:
         
         self.info_textbox.insert("end", output)
         self.info_textbox.configure(state="disabled")
+    
+    def setup_metrics_tab(self):
+        """Setup the model metrics evaluation tab"""
+        tab = self.tabview.tab("📊 Model Metrics")
+        
+        # Header
+        header_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        header_frame.pack(fill="x", padx=20, pady=(20, 10))
+        
+        title_label = ctk.CTkLabel(
+            header_frame,
+            text="Model Evaluation Metrics",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        title_label.pack()
+        
+        desc_label = ctk.CTkLabel(
+            header_frame,
+            text="View accuracy, precision, recall, F1 score, and other performance metrics",
+            font=ctk.CTkFont(size=12),
+            text_color="gray"
+        )
+        desc_label.pack(pady=(5, 15))
+        
+        # Button to load metrics
+        button_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        button_frame.pack(fill="x", padx=20, pady=(0, 20))
+        
+        self.metrics_button = ctk.CTkButton(
+            button_frame,
+            text="Evaluate Models",
+            command=self.load_metrics,
+            height=40,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            corner_radius=10,
+            width=200
+        )
+        self.metrics_button.pack()
+        
+        # Scrollable frame for results
+        self.metrics_scroll = ctk.CTkScrollableFrame(tab, corner_radius=15)
+        self.metrics_scroll.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        
+        # Placeholder text
+        self.metrics_text = ctk.CTkLabel(
+            self.metrics_scroll,
+            text="Click 'Evaluate Models' to see performance metrics",
+            font=ctk.CTkFont(size=13),
+            text_color="gray"
+        )
+        self.metrics_text.pack(pady=50)
+    
+    def load_metrics(self):
+        """Load and display evaluation metrics"""
+        self.metrics_button.configure(state="disabled", text="Evaluating...")
+        self.metrics_text.configure(text="Evaluating models... This may take a moment.")
+        
+        def evaluate():
+            try:
+                evaluator = ModelEvaluator(self.recommender)
+                metrics = evaluator.get_all_metrics()
+                
+                # Update UI in main thread
+                self.root.after(0, lambda: self.display_metrics(metrics))
+            except Exception as e:
+                self.root.after(0, lambda: self.display_metrics_error(str(e)))
+        
+        threading.Thread(target=evaluate, daemon=True).start()
+    
+    def display_metrics(self, metrics):
+        """Display metrics in the GUI"""
+        self.metrics_button.configure(state="normal", text="Evaluate Models")
+        
+        # Clear previous content
+        for widget in self.metrics_scroll.winfo_children():
+            widget.destroy()
+        
+        # Sentiment Analysis Metrics
+        if metrics.get('sentiment_analysis') and 'error' not in metrics['sentiment_analysis']:
+            sa = metrics['sentiment_analysis']
+            
+            sa_frame = ctk.CTkFrame(self.metrics_scroll, corner_radius=15)
+            sa_frame.pack(fill="x", padx=10, pady=10)
+            
+            sa_title = ctk.CTkLabel(
+                sa_frame,
+                text="📊 Sentiment Analysis Metrics",
+                font=ctk.CTkFont(size=18, weight="bold")
+            )
+            sa_title.pack(pady=(15, 10))
+            
+            info_text = f"Model Type: {sa['model_type']} | Test Samples: {sa['total_samples']}"
+            info_label = ctk.CTkLabel(sa_frame, text=info_text, font=ctk.CTkFont(size=12), text_color="gray")
+            info_label.pack(pady=(0, 15))
+            
+            # Overall metrics
+            overall_frame = ctk.CTkFrame(sa_frame, fg_color="transparent")
+            overall_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(overall_frame, text="Overall Metrics", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
+            
+            metrics_grid = ctk.CTkFrame(overall_frame, fg_color="transparent")
+            metrics_grid.pack(fill="x", pady=10)
+            
+            for label, value in [
+                ("Accuracy", f"{sa['accuracy']:.2f}%"),
+                ("Macro Precision", f"{sa['macro_precision']:.2f}%"),
+                ("Macro Recall", f"{sa['macro_recall']:.2f}%"),
+                ("Macro F1", f"{sa['macro_f1']:.2f}%")
+            ]:
+                metric_card = ctk.CTkFrame(metrics_grid, corner_radius=10)
+                metric_card.pack(side="left", fill="both", expand=True, padx=5)
+                
+                ctk.CTkLabel(metric_card, text=label, font=ctk.CTkFont(size=11), text_color="gray").pack(pady=(10, 5))
+                ctk.CTkLabel(metric_card, text=value, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 10))
+            
+            # Confusion Matrix
+            cm_frame = ctk.CTkFrame(sa_frame, fg_color="transparent")
+            cm_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(cm_frame, text="Confusion Matrix", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10, 5))
+            
+            cm = sa['confusion_matrix']
+            cm_text = f"True Positive: {cm['true_positive']} | False Positive: {cm['false_positive']}\n"
+            cm_text += f"False Negative: {cm['false_negative']} | True Negative: {cm['true_negative']}"
+            
+            cm_label = ctk.CTkLabel(cm_frame, text=cm_text, font=ctk.CTkFont(size=12), justify="left")
+            cm_label.pack(anchor="w", pady=5)
+        
+        # Recommendation System Metrics
+        if metrics.get('recommendation_system') and 'error' not in metrics['recommendation_system']:
+            rs = metrics['recommendation_system']
+            
+            rs_frame = ctk.CTkFrame(self.metrics_scroll, corner_radius=15)
+            rs_frame.pack(fill="x", padx=10, pady=10)
+            
+            rs_title = ctk.CTkLabel(
+                rs_frame,
+                text="🎬 Recommendation System Metrics",
+                font=ctk.CTkFont(size=18, weight="bold")
+            )
+            rs_title.pack(pady=(15, 10))
+            
+            info_text = f"Model Type: {rs['model_type']} | Test Movies: {rs['num_test_movies']} | K: {rs['k']}"
+            info_label = ctk.CTkLabel(rs_frame, text=info_text, font=ctk.CTkFont(size=12), text_color="gray")
+            info_label.pack(pady=(0, 15))
+            
+            # Performance metrics
+            perf_frame = ctk.CTkFrame(rs_frame, fg_color="transparent")
+            perf_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(perf_frame, text="Performance Metrics", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w")
+            
+            metrics_grid = ctk.CTkFrame(perf_frame, fg_color="transparent")
+            metrics_grid.pack(fill="x", pady=10)
+            
+            for label, value in [
+                (f"Precision@{rs['k']}", f"{rs['precision_at_k']:.2f}%"),
+                (f"Recall@{rs['k']}", f"{rs['recall_at_k']:.2f}%"),
+                (f"F1@{rs['k']}", f"{rs['f1_at_k']:.2f}%"),
+                ("Diversity", f"{rs['diversity']:.2f}%"),
+                ("Coverage", f"{rs['coverage']:.2f}%")
+            ]:
+                metric_card = ctk.CTkFrame(metrics_grid, corner_radius=10)
+                metric_card.pack(side="left", fill="both", expand=True, padx=5)
+                
+                ctk.CTkLabel(metric_card, text=label, font=ctk.CTkFont(size=11), text_color="gray").pack(pady=(10, 5))
+                ctk.CTkLabel(metric_card, text=value, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 10))
+    
+    def display_metrics_error(self, error_msg):
+        """Display error message"""
+        self.metrics_button.configure(state="normal", text="Evaluate Models")
+        
+        for widget in self.metrics_scroll.winfo_children():
+            widget.destroy()
+        
+        error_label = ctk.CTkLabel(
+            self.metrics_scroll,
+            text=f"❌ Error: {error_msg}",
+            font=ctk.CTkFont(size=13),
+            text_color="red"
+        )
+        error_label.pack(pady=50)
     
     def on_search_key_release(self, entry_widget, context):
         """Handle key release in search entry - show autocomplete suggestions"""
