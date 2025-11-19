@@ -157,36 +157,141 @@
 
         .movie-card {
             background: #f8f9fa;
-            border: 1px solid #e0e0e0;
+            border: 2px solid #e0e0e0;
             border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .movie-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-color: #667eea;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .movie-card.expanded {
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .movie-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+
+        .movie-card-title {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .movie-card-index {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-right: 10px;
+            min-width: 30px;
         }
 
         .movie-card h3 {
+            color: #333;
+            margin: 0;
+            font-size: 1.1em;
+            flex: 1;
+        }
+
+        .movie-card.expanded h3 {
             color: #667eea;
-            margin-bottom: 10px;
+        }
+
+        .expand-icon {
+            color: #999;
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .movie-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .movie-card-score {
+            color: #28a745;
+            font-weight: 600;
+            font-size: 0.95em;
+            margin-top: 5px;
+        }
+
+        .movie-card-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-top: 0;
+        }
+
+        .movie-card.expanded .movie-card-details {
+            max-height: 500px;
+            margin-top: 15px;
+        }
+
+        .movie-card-details-content {
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
         }
 
         .movie-card .info {
             color: #666;
-            margin: 5px 0;
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .movie-card .info strong {
+            color: #333;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+        .movie-card-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .card-action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .card-action-btn.primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .card-action-btn.primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
+        .card-action-btn.secondary {
+            background: #28a745;
+            color: white;
+        }
+
+        .card-action-btn.secondary:hover {
+            background: #218838;
+            transform: translateY(-1px);
         }
 
         .movie-card .similarity {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            margin-top: 10px;
+            display: none; /* Hide old similarity display */
         }
 
         .sentiment-result {
@@ -459,6 +564,26 @@
             }, 300);
         }
 
+        function toggleCard(cardElement) {
+            cardElement.classList.toggle('expanded');
+        }
+
+        function showMovieDetails(movieTitle) {
+            // Switch to details tab and populate with movie title
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('details').classList.add('active');
+            document.querySelectorAll('.tab-button')[3].classList.add('active');
+            
+            document.getElementById('details-title').value = movieTitle;
+            getMovieDetails();
+        }
+
+        function findSimilarMovies(movieTitle) {
+            document.getElementById('movie-title').value = movieTitle;
+            getRecommendations();
+        }
+
         function getRecommendations() {
             const movieTitle = document.getElementById('movie-title').value.trim();
             const resultsDiv = document.getElementById('recommend-results');
@@ -485,16 +610,33 @@
                 }
 
                 if (data.recommendations && data.recommendations.length > 0) {
-                    let html = `<div class="success">Found ${data.count} recommendations:</div>`;
-                    data.recommendations.forEach(movie => {
+                    let html = `<div class="success">✨ ${data.count} Recommendations based on: ${movieTitle}</div>`;
+                    html += '<p style="color: #666; margin: 10px 0; font-size: 0.9em;">💡 Click on any card to expand and see more details</p>';
+                    
+                    data.recommendations.forEach((movie, index) => {
                         const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
                         html += `
-                            <div class="movie-card">
-                                <h3>${movie.title}</h3>
-                                <div class="info"><strong>Director:</strong> ${movie.director || 'N/A'}</div>
-                                <div class="info"><strong>Genres:</strong> ${movie.genres || 'N/A'}</div>
-                                ${actors ? `<div class="info"><strong>Actors:</strong> ${actors}</div>` : ''}
-                                <div class="similarity">Similarity: ${(movie.similarity * 100).toFixed(2)}%</div>
+                            <div class="movie-card" onclick="toggleCard(this)">
+                                <div class="movie-card-header">
+                                    <div class="movie-card-title">
+                                        <span class="movie-card-index">${index + 1}.</span>
+                                        <h3>${movie.title}</h3>
+                                    </div>
+                                    <span class="expand-icon">▼</span>
+                                </div>
+                                <div class="movie-card-score">Match Score: ${(movie.similarity * 100).toFixed(2)}%</div>
+                                <div class="movie-card-details">
+                                    <div class="movie-card-details-content">
+                                        ${movie.genres ? `<div class="info"><strong>🎭 Genres:</strong> ${movie.genres}</div>` : ''}
+                                        ${movie.director ? `<div class="info"><strong>🎬 Director:</strong> ${movie.director}</div>` : ''}
+                                        ${actors ? `<div class="info"><strong>⭐ Cast:</strong> ${actors}</div>` : ''}
+                                        ${movie.vote_average ? `<div class="info"><strong>⭐ Rating:</strong> ${movie.vote_average}/10</div>` : ''}
+                                        <div class="movie-card-actions">
+                                            <button class="card-action-btn primary" onclick="event.stopPropagation(); showMovieDetails('${movie.title.replace(/'/g, "\\'")}');">Full Details</button>
+                                            <button class="card-action-btn secondary" onclick="event.stopPropagation(); findSimilarMovies('${movie.title.replace(/'/g, "\\'")}');">Similar Movies</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         `;
                     });
