@@ -575,9 +575,15 @@
             cardElement.setAttribute('aria-expanded', isExpanded.toString());
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         function handleCardKeydown(event, cardElement) {
             // Handle Enter and Space keys for keyboard accessibility
-            if (event.key === 'Enter' || event.key === ' ') {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
                 event.preventDefault();
                 toggleCard(cardElement);
             }
@@ -630,6 +636,14 @@
                     
                     data.recommendations.forEach((movie, index) => {
                         const actors = movie.actors.filter(a => a && a !== 'nan').join(', ');
+                        // Properly escape HTML entities for aria-label
+                        const escapedTitle = movie.title
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#39;');
+                        
                         html += `
                             <div class="movie-card" 
                                  onclick="toggleCard(this)" 
@@ -637,7 +651,7 @@
                                  tabindex="0" 
                                  role="button" 
                                  aria-expanded="false"
-                                 aria-label="Expand details for ${movie.title.replace(/"/g, '&quot;')}">
+                                 aria-label="Expand details for ${escapedTitle}">
                                 <div class="movie-card-header">
                                     <div class="movie-card-title">
                                         <span class="movie-card-index">${index + 1}.</span>
