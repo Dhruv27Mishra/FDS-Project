@@ -597,6 +597,14 @@
             }
         }
 
+        function handleCardKeyPress(event, cardElement) {
+            // Handle Enter (13) or Space (32) key
+            if (event.keyCode === 13 || event.keyCode === 32) {
+                event.preventDefault();
+                toggleCard(cardElement);
+            }
+        }
+
         function showMovieDetails(movieTitle) {
             // Switch to details tab and populate with movie title
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
