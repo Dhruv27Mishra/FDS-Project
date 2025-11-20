@@ -53,34 +53,48 @@ class ModelEvaluator:
             self.sentiment_test_data = self._create_default_sentiment_test_set()
     
     def _create_sentiment_test_set(self, lines: List[str]) -> List[Tuple[str, str]]:
-        """Create test set from review lines"""
+        """
+        Create realistic test set with challenging, nuanced reviews
+        These are based on actual IMDB-style reviews to better evaluate model performance
+        """
         test_data = []
         
-        # Sample positive and negative reviews
+        # More realistic positive reviews with nuanced language
         positive_samples = [
-            ("This movie was absolutely amazing! Best film I've seen this year.", "Positive"),
-            ("I loved every minute of this film. Highly recommended!", "Positive"),
-            ("Excellent acting and great storyline. A masterpiece!", "Positive"),
-            ("One of the best movies ever made. Perfect in every way.", "Positive"),
-            ("Outstanding performance by all actors. Must watch!", "Positive"),
-            ("Brilliant cinematography and engaging plot. Loved it!", "Positive"),
-            ("This film exceeded all my expectations. Fantastic!", "Positive"),
-            ("A wonderful movie with great character development.", "Positive"),
-            ("I was completely captivated from start to finish.", "Positive"),
-            ("Perfect blend of action, drama, and emotion. Excellent!", "Positive"),
+            ("Despite some pacing issues in the middle act, this film delivers a powerful emotional punch. The performances are genuinely moving and the cinematography is breathtaking. A must-see for fans of the genre.", "Positive"),
+            ("I went in with low expectations but was pleasantly surprised. While not perfect, the strong character development and clever dialogue make this worth watching. The ending particularly resonated with me.", "Positive"),
+            ("This movie manages to balance humor and drama effectively. Sure, there are a few predictable moments, but the overall experience is satisfying. The cast has great chemistry and the direction is solid.", "Positive"),
+            ("A visually stunning masterpiece that pushes the boundaries of storytelling. Yes, it's long, but every minute serves the narrative. The attention to detail is remarkable.", "Positive"),
+            ("I'll admit the first 20 minutes are slow, but stick with it. Once the story picks up, it becomes an engrossing thriller with genuine surprises. The lead actor delivers a career-best performance.", "Positive"),
+            ("Not your typical blockbuster, and that's what makes it special. The unconventional narrative structure might alienate some viewers, but those who appreciate artful cinema will find much to love here.", "Positive"),
+            ("While I had minor quibbles with some of the supporting characters, the film's core message is delivered with sensitivity and grace. A thoughtful exploration of complex themes.", "Positive"),
+            ("The movie doesn't reinvent the wheel, but it executes familiar tropes with style and confidence. Great entertainment value with strong performances across the board.", "Positive"),
+            ("After a somewhat shaky opening, the film finds its footing and delivers an emotionally satisfying journey. The final act alone makes the whole thing worthwhile.", "Positive"),
+            ("This is how you do a remake right. It honors the original while bringing fresh perspectives. Some liberties were taken with the source material, but they work in the film's favor.", "Positive"),
+            ("A surprisingly deep and moving film that exceeded my expectations. The subtle performances and understated direction create something truly special.", "Positive"),
+            ("While the plot may seem simple on the surface, the execution is anything but. Rich character development and beautiful cinematography elevate this above standard fare.", "Positive"),
+            ("I appreciated the director's bold choices, even when they didn't all land. Overall, this is a refreshing and original take on a well-worn genre.", "Positive"),
+            ("The first half is a bit uneven, but the second half is absolutely riveting. Patient viewers will be rewarded with a powerful and memorable experience.", "Positive"),
+            ("Not without its flaws, but the ambition and heart on display here are undeniable. A film that stays with you long after the credits roll.", "Positive"),
         ]
         
+        # More realistic negative reviews with nuanced language
         negative_samples = [
-            ("This movie was terrible. Complete waste of time.", "Negative"),
-            ("Boring and poorly written. I don't recommend it.", "Negative"),
-            ("The worst film I've ever seen. Awful acting.", "Negative"),
-            ("Disappointing plot and bad direction. Not worth watching.", "Negative"),
-            ("I couldn't finish watching this. It was that bad.", "Negative"),
-            ("Poor script and terrible pacing. Very disappointing.", "Negative"),
-            ("This film was a complete disaster. Avoid at all costs.", "Negative"),
-            ("Bad acting, weak storyline. Not recommended.", "Negative"),
-            ("I expected much more. This movie was a letdown.", "Negative"),
-            ("Terrible cinematography and confusing plot. Awful!", "Negative"),
+            ("I really wanted to like this movie, but the convoluted plot and one-dimensional characters made it a chore to sit through. The talented cast is wasted on a script that doesn't know what it wants to be.", "Negative"),
+            ("The film has interesting ideas but fails in execution. The pacing drags, the dialogue feels forced, and the ending is frustratingly ambiguous without earning that ambiguity. Disappointed given the director's previous work.", "Negative"),
+            ("Despite impressive visual effects, the movie is hollow at its core. The characters make baffling decisions, the plot has more holes than Swiss cheese, and the emotional beats feel manipulative rather than earned.", "Negative"),
+            ("I appreciate what they were trying to do here, but the execution is severely lacking. The tone is all over the place - is it a comedy? A drama? The movie itself doesn't seem to know.", "Negative"),
+            ("This could have been great with a tighter script and better editing. Instead, we get a bloated mess that mistakes length for depth. The talented ensemble cast deserved better material to work with.", "Negative"),
+            ("The first act shows promise, but everything falls apart in the second half. Plot threads are abandoned, character arcs go nowhere, and the climax feels rushed and unsatisfying.", "Negative"),
+            ("I understand the vision the director had, but it simply doesn't translate to screen. The pretentious dialogue and meandering narrative tested my patience. Style over substance taken to an extreme.", "Negative"),
+            ("For all its budget and star power, this film feels surprisingly amateurish. The CGI looks unfinished, the green screen work is obvious, and the action sequences are incoherent.", "Negative"),
+            ("The movie tries too hard to be clever and ends up being confusing instead. Multiple viewings might help, but I honestly have no desire to sit through this again.", "Negative"),
+            ("I kept waiting for it to get better, but it never did. The premise had potential, but the lazy writing and uninspired direction squander every opportunity. A frustrating waste of time.", "Negative"),
+            ("While technically competent, the film lacks any real heart or originality. It feels like a paint-by-numbers exercise, hitting every expected beat without adding anything new.", "Negative"),
+            ("The marketing promised a thrilling experience, but what we got was a slow, meandering slog. By the time anything interesting happens, it's too late to save the movie.", "Negative"),
+            ("I wanted to give this the benefit of the doubt, but the numerous plot holes and inconsistent character motivations made it impossible to stay invested in the story.", "Negative"),
+            ("The director's signature style, which worked brilliantly in their earlier films, feels tired and repetitive here. It's like watching someone go through the motions without any passion.", "Negative"),
+            ("Despite a strong opening scene, the film quickly devolves into a mess of clichés and predictable twists. The ending in particular feels like a cop-out.", "Negative"),
         ]
         
         test_data = positive_samples + negative_samples
